@@ -9,6 +9,7 @@ https://docs.djangoproject.com/en/3.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.1/ref/settings/
 """
+import os 
 
 from pathlib import Path
 
@@ -37,6 +38,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    'posts',
 ]
 
 MIDDLEWARE = [
@@ -73,12 +76,36 @@ WSGI_APPLICATION = 'django_ci.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/3.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+'''
+Why this block? 
+GITHUB_WORKFLOW env variable is only available in GitHub Actions. So in actions
+we want a simple postgres docker image to be booted as a service and does all the testing there.
+When we deploy to cloud the else block will work as we won't be having GITHUB_WORKFLOW env var in our deployment.
+That time the db config we use DB_USER, DB_NAME, DB_PASSWORD, DB_HOST and DB_PASSWORD
+which we will set in repository secret to be used in our deployment.
+'''
+if os.environ.get('GITHUB_WORKFLOW'):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'github-actions',
+            'USER': 'postgres',
+            'PASSWORD': 'postgres',
+            'HOST': 'localhost',
+            'PORT': '5432'
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.contrib.gis.db.backends.postgis',
+            'NAME': os.environ.get("DJ_DB_NAME"),
+            'USER': os.environ.get("DJ_DB_USER"),
+            'PASSWORD': os.environ.get("DJ_DB_PASSWORD"),
+            'HOST': os.environ.get("DJ_DB_HOST"),
+            'PORT': os.environ.get("DJ_DB_PORT"),
+        }
+    }
 
 
 # Password validation
